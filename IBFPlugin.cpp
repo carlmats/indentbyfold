@@ -26,10 +26,16 @@
 #include "SciMessager.h"
 #include "WaitCursor.h"
 #include "Version.h"
+#include <shlwapi.h>
 
 extern IBFPlugin ibfplugin;
 
 WNDPROC IBFPlugin::nppOriginalWndProc = NULL;
+
+const TCHAR configFileName[] = TEXT("indentByFold.ini");
+const TCHAR sectionName[] = TEXT("Settings");
+const TCHAR keyName[] = TEXT("Indent");
+
 
 IBFPlugin::IBFPlugin() {}
 
@@ -276,6 +282,34 @@ void IBFPlugin::reindentFile()
 	{
 		return;
 	}
+
+    /***************************************** CONFIG TEST BEGIN *****************************************/
+
+    TCHAR iniFilePath[MAX_PATH];
+    // get path of plugin configuration
+    ::SendMessage(m_nppMsgr.getNppWnd(), NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, (LPARAM)iniFilePath);
+
+    // if config path doesn't exist, we create it
+    if (PathFileExists(iniFilePath) == FALSE)
+    {
+        ::CreateDirectory(iniFilePath, NULL);
+    }
+
+    // make your plugin config file full file path name
+    PathAppend(iniFilePath, configFileName);
+
+    if (!::PathFileExists(iniFilePath))
+    {
+        HANDLE configFile = ::CreateFile(iniFilePath, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+        char* configText = "[Settings]\r\nIndent=1";
+        ::WriteFile(configFile, configText, strlen(configText), NULL, NULL);
+        CloseHandle(configFile);
+    }
+
+    // get the parameter value from plugin config
+    indent = ::GetPrivateProfileInt(sectionName, keyName, 4, iniFilePath);
+
+    /***************************************** TEST END *****************************************/
 
 	WaitCursor wait;
 	CSciMessager sciMsgr(m_nppMsgr.getCurrentScintillaWnd());

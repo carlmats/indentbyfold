@@ -38,6 +38,7 @@ private:
 	int indentationtouse;
 	int foldleveltomatch;
 	int postoblame;
+    int indent;
 	LangType langType;
 protected:
 	// internal vars
