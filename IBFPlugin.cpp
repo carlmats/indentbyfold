@@ -20,6 +20,8 @@
 //                                                                         //
 /////////////////////////////////////////////////////////////////////////////
 
+
+
 #include <windows.h>
 #include "IBFPlugin.h"
 #include "IBFMenu.h"
@@ -28,6 +30,25 @@
 #include "Version.h"
 #include <shlwapi.h>
 
+#define FOREACH_CONFIG_KEY(KEY) \
+		KEY(first)				\
+		KEY(indent)				\
+		KEY(last)				\
+
+#define GENERATE_ENUM(ENUM) ENUM,
+#define GENERATE_STRING(STRING) #STRING,
+
+
+enum CONFIG_KEY_ENUM {
+	FOREACH_CONFIG_KEY(GENERATE_ENUM)
+};
+
+static const char* CONFIG_KEY_STRING[]{
+	FOREACH_CONFIG_KEY(GENERATE_STRING)
+};
+
+int config[CONFIG_KEY_ENUM::last];
+
 extern IBFPlugin ibfplugin;
 
 WNDPROC IBFPlugin::nppOriginalWndProc = NULL;
@@ -35,6 +56,8 @@ WNDPROC IBFPlugin::nppOriginalWndProc = NULL;
 const TCHAR configFileName[] = TEXT("indentByFold.ini");
 const TCHAR sectionName[] = TEXT("Settings");
 const TCHAR keyName[] = TEXT("Indent");
+
+
 
 
 IBFPlugin::IBFPlugin() {}
@@ -302,12 +325,18 @@ void IBFPlugin::reindentFile()
     {
         HANDLE configFile = ::CreateFile(iniFilePath, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
         char* configText = "[Settings]\r\nIndent=1";
+
         ::WriteFile(configFile, configText, strlen(configText), NULL, NULL);
         CloseHandle(configFile);
     }
 
-    // get the parameter value from plugin config
-    indent = ::GetPrivateProfileInt(sectionName, keyName, 4, iniFilePath);
+
+	for (int i = CONFIG_KEY_ENUM::first; i < CONFIG_KEY_ENUM::last; i++)
+	{
+		wchar_t wtext[20];
+		mbstowcs(wtext, CONFIG_KEY_STRING[i], strlen(CONFIG_KEY_STRING[i]) + 1);
+		config[i] = ::GetPrivateProfileInt(sectionName, wtext, 0, iniFilePath);
+	}
 
     /***************************************** TEST END *****************************************/
 
@@ -326,7 +355,7 @@ void IBFPlugin::reindentFile()
 void IBFPlugin::indentLine( int line, bool doingwholefile )
 {
 	CSciMessager sciMsgr( m_nppMsgr.getCurrentScintillaWnd() );
-	int getwidth = sciMsgr.getTabWidth();
+	int getwidth = config[CONFIG_KEY_ENUM::indent]; //sciMsgr.getTabWidth();
 	int foldparentline = sciMsgr.getFoldParent( line );
 	int foldlevellastline = sciMsgr.getFoldLevel( line - 1 );
 	int foldlevellast = foldlevellastline & SC_FOLDLEVELNUMBERMASK;
